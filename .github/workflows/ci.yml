@@ -66,15 +66,19 @@ jobs:
     runs-on: ubuntu-latest
     needs: [backend, frontend]
     if: github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+      packages: write
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Log in to Docker Hub
+      - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
         with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -85,8 +89,8 @@ jobs:
           context: ./backend
           push: true
           tags: |
-            lingaicyrille1/pdi-backend:latest
-            lingaicyrille1/pdi-backend:${{ github.sha }}
+            ghcr.io/lingaicyrille/pdi-backend:latest
+            ghcr.io/lingaicyrille/pdi-backend:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -96,8 +100,8 @@ jobs:
           context: ./frontend
           push: true
           tags: |
-            lingaicyrille1/pdi-frontend:latest
-            lingaicyrille1/pdi-frontend:${{ github.sha }}
+            ghcr.io/lingaicyrille/pdi-frontend:latest
+            ghcr.io/lingaicyrille/pdi-frontend:${{ github.sha }}
           build-args: |
             NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_API_URL }}
           cache-from: type=gha
