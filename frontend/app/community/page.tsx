@@ -204,7 +204,7 @@ export default function CommunityPage() {
                     <h3 className="font-bold text-gray-900 truncate text-sm">{g.name}</h3>
                     <p className="text-xs text-gray-400">par {g.creator.first_name} {g.creator.last_name}</p>
                   </div>
-                  <Badge variant={g.type === 'public' ? 'success' : 'warning'} className="ml-2 flex-shrink-0 text-[10px]">
+                  <Badge variant={g.type === 'public' ? 'green' : 'orange'} className="ml-2 flex-shrink-0 text-[10px]">
                     {g.type === 'public' ? 'Public' : 'Privé'}
                   </Badge>
                 </div>
