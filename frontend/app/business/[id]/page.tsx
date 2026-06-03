@@ -105,8 +105,15 @@ export default function BusinessDetailPage() {
   const params = useParams()
   const router = useRouter()
   const qc = useQueryClient()
-  const { user } = useAuthStore()
+  const { user, clearAuth } = useAuthStore()
   const businessId = Number(params.id)
+
+  const userMeta = user ? {
+    full_name: `${user.first_name} ${user.last_name}`,
+    email: user.email,
+    country_of_residence: user.country_of_residence,
+    is_verified: user.is_verified,
+  } : null
 
   const [reviewRating, setReviewRating] = useState(0)
   const [reviewComment, setReviewComment] = useState('')
@@ -143,7 +150,7 @@ export default function BusinessDetailPage() {
 
   if (isLoading) {
     return (
-      <AppLayout>
+      <AppLayout user={userMeta} onLogout={() => { clearAuth(); router.push('/auth/login') }}>
         <div className="max-w-3xl mx-auto px-4 py-8 space-y-6">
           <Skeleton className="h-32 w-full rounded-2xl" />
           <Skeleton className="h-8 w-1/2" />
@@ -156,7 +163,7 @@ export default function BusinessDetailPage() {
 
   if (!business) {
     return (
-      <AppLayout>
+      <AppLayout user={userMeta} onLogout={() => { clearAuth(); router.push('/auth/login') }}>
         <div className="max-w-3xl mx-auto px-4 py-16 text-center text-gray-500">
           Entreprise introuvable.
         </div>
@@ -167,7 +174,7 @@ export default function BusinessDetailPage() {
   const mapQuery = [business.address, business.city, business.country].filter(Boolean).join(', ')
 
   return (
-    <AppLayout>
+    <AppLayout user={userMeta} onLogout={() => { clearAuth(); router.push('/auth/login') }}>
       <div className="max-w-3xl mx-auto px-4 py-6">
         {/* Back */}
         <button

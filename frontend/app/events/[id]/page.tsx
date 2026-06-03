@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
 import api from '@/lib/api'
+import { useAuthStore } from '@/store/auth-store'
 
 interface Event {
   id: number
@@ -67,8 +68,16 @@ export default function EventDetailPage() {
   const params = useParams()
   const router = useRouter()
   const qc = useQueryClient()
+  const { user, clearAuth } = useAuthStore()
   const eventId = Number(params.id)
   const [showRsvpMenu, setShowRsvpMenu] = useState(false)
+
+  const userMeta = user ? {
+    full_name: `${user.first_name} ${user.last_name}`,
+    email: user.email,
+    country_of_residence: user.country_of_residence,
+    is_verified: user.is_verified,
+  } : null
 
   const { data: event, isLoading } = useQuery<Event>({
     queryKey: ['event', eventId],
@@ -86,7 +95,7 @@ export default function EventDetailPage() {
 
   if (isLoading) {
     return (
-      <AppLayout>
+      <AppLayout user={userMeta} onLogout={() => { clearAuth(); router.push('/auth/login') }}>
         <div className="max-w-3xl mx-auto px-4 py-8 space-y-6">
           <Skeleton className="h-64 w-full rounded-2xl" />
           <Skeleton className="h-8 w-2/3" />
@@ -99,7 +108,7 @@ export default function EventDetailPage() {
 
   if (!event) {
     return (
-      <AppLayout>
+      <AppLayout user={userMeta} onLogout={() => { clearAuth(); router.push('/auth/login') }}>
         <div className="max-w-3xl mx-auto px-4 py-16 text-center text-gray-500">
           Événement introuvable.
         </div>
@@ -111,7 +120,7 @@ export default function EventDetailPage() {
   const isFull = event.capacity !== null && event.attendee_count >= event.capacity
 
   return (
-    <AppLayout>
+    <AppLayout user={userMeta} onLogout={() => { clearAuth(); router.push('/auth/login') }}>
       <div className="max-w-3xl mx-auto px-4 py-6">
         {/* Back */}
         <button
