@@ -2,7 +2,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Briefcase, Plus, Star, MapPin, Phone, Globe, BadgeCheck, X } from 'lucide-react'
+import { Briefcase, Plus, Star, MapPin, Phone, Globe, BadgeCheck, X, Search } from 'lucide-react'
 import { AppLayout } from '@/components/layout/app-layout'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -22,6 +22,7 @@ interface Business {
   phone: string
   website: string
   email: string
+  logo: string | null
   is_verified: boolean
   average_rating: number | null
   review_count: number
@@ -46,10 +47,23 @@ function CreateBusinessModal({ onClose, onCreated }: { onClose: () => void; onCr
     name: '', description: '', category: 'other',
     country: '', city: '', address: '', phone: '', website: '', email: '',
   })
+  const [logo, setLogo] = useState<File | null>(null)
+  const [logoPreview, setLogoPreview] = useState<string | null>(null)
   const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }))
 
+  function handleLogoChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0] ?? null
+    setLogo(file)
+    setLogoPreview(file ? URL.createObjectURL(file) : null)
+  }
+
   const create = useMutation({
-    mutationFn: () => api.post('/api/business/businesses/', form),
+    mutationFn: () => {
+      const fd = new FormData()
+      Object.entries(form).forEach(([k, v]) => fd.append(k, v))
+      if (logo) fd.append('logo', logo)
+      return api.post('/api/business/businesses/', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
+    },
     onSuccess: () => { onCreated(); onClose() },
   })
 
@@ -64,6 +78,26 @@ function CreateBusinessModal({ onClose, onCreated }: { onClose: () => void; onCr
           className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ci-orange/20 focus:border-ci-orange" />
         <textarea value={form.description} onChange={e => set('description', e.target.value)} placeholder="Description" rows={3}
           className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ci-orange/20 focus:border-ci-orange resize-none" />
+
+        {/* Logo upload */}
+        <div>
+          <label className="text-xs text-gray-500 mb-1 block">Logo (optionnel)</label>
+          {logoPreview ? (
+            <div className="relative w-20 h-20">
+              <img src={logoPreview} alt="logo" className="w-20 h-20 object-cover rounded-xl border border-gray-200" />
+              <button onClick={() => { setLogo(null); setLogoPreview(null) }}
+                className="absolute -top-1.5 -right-1.5 bg-white border border-gray-200 text-gray-500 rounded-full p-0.5 hover:bg-gray-100">
+                <X size={10} />
+              </button>
+            </div>
+          ) : (
+            <label className="flex items-center justify-center w-20 h-20 border-2 border-dashed border-gray-200 rounded-xl cursor-pointer hover:border-ci-orange transition">
+              <span className="text-[10px] text-gray-400 text-center leading-tight px-1">Ajouter logo</span>
+              <input type="file" accept="image/*" onChange={handleLogoChange} className="hidden" />
+            </label>
+          )}
+        </div>
+
         <div className="grid grid-cols-2 gap-3">
           <select value={form.category} onChange={e => set('category', e.target.value)}
             className="border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ci-orange/20 focus:border-ci-orange">
@@ -112,13 +146,15 @@ export default function BusinessPage() {
   const { user, clearAuth } = useAuthStore()
   const qc = useQueryClient()
   const [category, setCategory] = useState('')
+  const [search, setSearch] = useState('')
   const [showCreate, setShowCreate] = useState(false)
 
   const { data, isLoading } = useQuery<{ results: Business[] }>({
-    queryKey: ['businesses', category],
+    queryKey: ['businesses', category, search],
     queryFn: () => {
       const params = new URLSearchParams()
       if (category) params.set('category', category)
+      if (search) params.set('search', search)
       return api.get(`/api/business/businesses/?${params}`).then(r => r.data)
     },
   })
@@ -176,6 +212,17 @@ export default function BusinessPage() {
           ))}
         </div>
 
+        {/* Search */}
+        <div className="relative mb-4">
+          <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+          <input
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Rechercher une entreprise..."
+            className="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-ci-orange/20 focus:border-ci-orange bg-white"
+          />
+        </div>
+
         {/* Category filter */}
         <div className="flex flex-wrap gap-2 mb-6">
           <button
@@ -213,9 +260,16 @@ export default function BusinessPage() {
         ) : (
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {businesses.map(b => (
-              <div key={b.id} className="bg-white rounded-2xl p-5 shadow-card hover:shadow-card-hover transition-shadow flex flex-col">
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex-1 min-w-0 mr-2">
+              <div key={b.id} onClick={() => router.push(`/business/${b.id}`)} className="bg-white rounded-2xl p-5 shadow-card hover:shadow-card-hover transition-shadow flex flex-col cursor-pointer">
+                <div className="flex items-start gap-3 mb-3">
+                  {b.logo ? (
+                    <img src={b.logo} alt={b.name} className="w-10 h-10 rounded-xl object-cover border border-gray-100 flex-shrink-0" />
+                  ) : (
+                    <div className="w-10 h-10 rounded-xl bg-ci-orange/10 flex items-center justify-center flex-shrink-0">
+                      <Briefcase size={16} className="text-ci-orange" />
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5">
                       <h3 className="font-bold text-gray-900 text-sm truncate">{b.name}</h3>
                       {b.is_verified && <BadgeCheck size={13} className="text-green-500 flex-shrink-0" />}
