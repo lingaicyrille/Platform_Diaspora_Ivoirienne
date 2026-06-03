@@ -1,6 +1,7 @@
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError, PermissionDenied
+from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
@@ -8,16 +9,27 @@ from .models import Listing, Offer
 from .serializers import ListingSerializer, OfferSerializer
 
 
+class StandardPagination(PageNumberPagination):
+    page_size = 20
+    page_size_query_param = 'page_size'
+    max_page_size = 100
+
+
 class ListingViewSet(viewsets.ModelViewSet):
     serializer_class = ListingSerializer
     permission_classes = [IsAuthenticated]
+    pagination_class = StandardPagination
 
     def get_queryset(self):
-        qs = Listing.objects.filter(is_active=True).select_related('seller')
-        category = self.request.query_params.get('category')
-        condition = self.request.query_params.get('condition')
-        min_price = self.request.query_params.get('min_price')
-        max_price = self.request.query_params.get('max_price')
+        qs = Listing.objects.filter(is_active=True).select_related('seller').prefetch_related('offers')
+        params = self.request.query_params
+
+        category = params.get('category')
+        condition = params.get('condition')
+        min_price = params.get('min_price')
+        max_price = params.get('max_price')
+        location = params.get('location')
+
         if category:
             qs = qs.filter(category=category)
         if condition:
@@ -26,6 +38,9 @@ class ListingViewSet(viewsets.ModelViewSet):
             qs = qs.filter(price__gte=min_price)
         if max_price:
             qs = qs.filter(price__lte=max_price)
+        if location:
+            qs = qs.filter(location__icontains=location)
+
         return qs
 
     def perform_create(self, serializer):
@@ -45,6 +60,7 @@ class ListingViewSet(viewsets.ModelViewSet):
 class OfferViewSet(viewsets.ModelViewSet):
     serializer_class = OfferSerializer
     permission_classes = [IsAuthenticated]
+    pagination_class = StandardPagination
     http_method_names = ['get', 'patch', 'delete', 'head', 'options']
 
     def get_queryset(self):

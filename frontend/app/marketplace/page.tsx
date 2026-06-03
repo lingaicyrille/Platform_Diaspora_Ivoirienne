@@ -18,8 +18,10 @@ interface Listing {
   currency: string
   category: string
   condition: 'new' | 'used'
+  image: string | null
   location: string
   is_active: boolean
+  offer_count: number
   created_at: string
 }
 
@@ -33,10 +35,23 @@ function CreateListingModal({ onClose, onCreated }: { onClose: () => void; onCre
     title: '', description: '', price: '', currency: 'EUR',
     category: 'other', condition: 'used', location: '',
   })
+  const [image, setImage] = useState<File | null>(null)
+  const [imagePreview, setImagePreview] = useState<string | null>(null)
   const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }))
 
+  function handleImageChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0] ?? null
+    setImage(file)
+    setImagePreview(file ? URL.createObjectURL(file) : null)
+  }
+
   const create = useMutation({
-    mutationFn: () => api.post('/api/marketplace/listings/', { ...form, price: parseFloat(form.price) }),
+    mutationFn: () => {
+      const fd = new FormData()
+      Object.entries(form).forEach(([k, v]) => fd.append(k, v))
+      if (image) fd.append('image', image)
+      return api.post('/api/marketplace/listings/', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
+    },
     onSuccess: () => { onCreated(); onClose() },
   })
 
@@ -51,6 +66,26 @@ function CreateListingModal({ onClose, onCreated }: { onClose: () => void; onCre
           className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ci-orange/20 focus:border-ci-orange" />
         <textarea value={form.description} onChange={e => set('description', e.target.value)} placeholder="Description" rows={3}
           className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ci-orange/20 focus:border-ci-orange resize-none" />
+
+        {/* Image upload */}
+        <div>
+          <label className="text-xs text-gray-500 mb-1 block">Photo (optionnel)</label>
+          {imagePreview ? (
+            <div className="relative">
+              <img src={imagePreview} alt="preview" className="w-full h-36 object-cover rounded-xl" />
+              <button onClick={() => { setImage(null); setImagePreview(null) }}
+                className="absolute top-2 right-2 bg-black/50 text-white rounded-full p-1 hover:bg-black/70">
+                <X size={12} />
+              </button>
+            </div>
+          ) : (
+            <label className="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed border-gray-200 rounded-xl cursor-pointer hover:border-pink-400 transition">
+              <span className="text-xs text-gray-400">Cliquez pour ajouter une photo</span>
+              <input type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
+            </label>
+          )}
+        </div>
+
         <div className="grid grid-cols-2 gap-3">
           <input value={form.price} onChange={e => set('price', e.target.value)} placeholder="Prix" type="number"
             className="border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ci-orange/20 focus:border-ci-orange" />
@@ -237,7 +272,15 @@ export default function MarketplacePage() {
             {listings.map(l => {
               const isOwn = l.seller.id === user?.id
               return (
-                <div key={l.id} className="bg-white rounded-2xl p-5 shadow-card hover:shadow-card-hover transition-shadow flex flex-col">
+                <div key={l.id} onClick={() => router.push(`/marketplace/${l.id}`)} className="bg-white rounded-2xl shadow-card hover:shadow-card-hover transition-shadow flex flex-col cursor-pointer overflow-hidden">
+                  {l.image ? (
+                    <img src={l.image} alt={l.title} className="w-full h-36 object-cover" />
+                  ) : (
+                    <div className="w-full h-28 bg-gradient-to-br from-pink-50 to-rose-100 flex items-center justify-center">
+                      <ShoppingBag size={28} className="text-pink-300" />
+                    </div>
+                  )}
+                  <div className="p-4 flex flex-col flex-1">
                   <div className="flex items-start justify-between mb-2">
                     <span className={cn(
                       'text-[11px] font-semibold px-2 py-0.5 rounded-full',
@@ -271,7 +314,7 @@ export default function MarketplacePage() {
                     </span>
                     {!isOwn && (
                       <button
-                        onClick={() => setOfferTarget(l)}
+                        onClick={e => { e.stopPropagation(); setOfferTarget(l) }}
                         className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-ci text-white rounded-xl text-xs font-semibold hover:opacity-90 transition"
                       >
                         <Sparkles size={11} /> Offre
@@ -282,6 +325,7 @@ export default function MarketplacePage() {
                   <p className="text-[11px] text-gray-400 mt-2">
                     {isOwn ? 'Votre annonce' : `${l.seller.first_name} ${l.seller.last_name}`}
                   </p>
+                  </div>
                 </div>
               )
             })}
