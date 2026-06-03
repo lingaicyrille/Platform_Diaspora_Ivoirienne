@@ -1,9 +1,10 @@
 'use client'
+import { useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   ArrowLeft, Building2, Globe, Mail, MapPin, Users,
-  BadgeCheck, Crown, Shield, User, ExternalLink,
+  BadgeCheck, Crown, Shield, User, ExternalLink, Pencil, X,
 } from 'lucide-react'
 import { AppLayout } from '@/components/layout/app-layout'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -53,12 +54,120 @@ const roleConfig = {
   member:    { label: 'Membre',    icon: User,   color: 'text-gray-600 bg-gray-100' },
 }
 
+const categoryLabels2 = categoryLabels // alias for use inside modal
+
+function EditAssociationModal({ assoc, onClose, onSaved }: {
+  assoc: Association
+  onClose: () => void
+  onSaved: () => void
+}) {
+  const [form, setForm] = useState({
+    name: assoc.name,
+    description: assoc.description,
+    category: assoc.category,
+    country: assoc.country,
+    city: assoc.city,
+    website: assoc.website,
+    contact_email: assoc.contact_email,
+  })
+  const [logo, setLogo] = useState<File | null>(null)
+  const [logoPreview, setLogoPreview] = useState<string | null>(assoc.logo)
+  const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }))
+
+  function handleLogoChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0] ?? null
+    setLogo(file)
+    if (file) setLogoPreview(URL.createObjectURL(file))
+  }
+
+  const save = useMutation({
+    mutationFn: () => {
+      const fd = new FormData()
+      Object.entries(form).forEach(([k, v]) => fd.append(k, v))
+      if (logo) fd.append('logo', logo)
+      return api.patch(`/api/associations/associations/${assoc.id}/`, fd, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      })
+    },
+    onSuccess: () => { onSaved(); onClose() },
+  })
+
+  return (
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
+      <div className="bg-white rounded-3xl w-full max-w-lg p-6 space-y-4 shadow-2xl my-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-bold text-gray-900">Modifier l'association</h3>
+          <button onClick={onClose} className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100"><X size={16} /></button>
+        </div>
+
+        <input value={form.name} onChange={e => set('name', e.target.value)} placeholder="Nom de l'association"
+          className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ci-orange/20 focus:border-ci-orange" />
+
+        <textarea value={form.description} onChange={e => set('description', e.target.value)} placeholder="Description" rows={3}
+          className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ci-orange/20 focus:border-ci-orange resize-none" />
+
+        {/* Logo */}
+        <div>
+          <label className="text-xs text-gray-500 mb-1 block">Logo</label>
+          {logoPreview ? (
+            <div className="relative w-20 h-20">
+              <img src={logoPreview} alt="logo" className="w-20 h-20 object-cover rounded-xl border border-gray-200" />
+              <label className="absolute inset-0 flex items-center justify-center bg-black/30 rounded-xl cursor-pointer opacity-0 hover:opacity-100 transition">
+                <Pencil size={14} className="text-white" />
+                <input type="file" accept="image/*" onChange={handleLogoChange} className="hidden" />
+              </label>
+            </div>
+          ) : (
+            <label className="flex items-center justify-center w-20 h-20 border-2 border-dashed border-gray-200 rounded-xl cursor-pointer hover:border-ci-green transition">
+              <span className="text-[10px] text-gray-400 text-center leading-tight px-1">Ajouter logo</span>
+              <input type="file" accept="image/*" onChange={handleLogoChange} className="hidden" />
+            </label>
+          )}
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <select value={form.category} onChange={e => set('category', e.target.value)}
+            className="border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ci-orange/20 focus:border-ci-orange">
+            {Object.entries(categoryLabels2).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+          </select>
+          <input value={form.country} onChange={e => set('country', e.target.value)} placeholder="Pays"
+            className="border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ci-orange/20 focus:border-ci-orange" />
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <input value={form.city} onChange={e => set('city', e.target.value)} placeholder="Ville"
+            className="border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ci-orange/20 focus:border-ci-orange" />
+          <input value={form.contact_email} onChange={e => set('contact_email', e.target.value)} placeholder="Email de contact"
+            className="border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ci-orange/20 focus:border-ci-orange" />
+        </div>
+
+        <input value={form.website} onChange={e => set('website', e.target.value)} placeholder="Site web"
+          className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ci-orange/20 focus:border-ci-orange" />
+
+        <div className="flex gap-3 pt-2">
+          <button onClick={onClose} className="flex-1 py-2.5 border border-gray-200 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50">
+            Annuler
+          </button>
+          <button
+            onClick={() => save.mutate()}
+            disabled={!form.name || save.isPending}
+            className="flex-1 py-2.5 bg-gradient-ci text-white rounded-xl text-sm font-semibold hover:opacity-90 disabled:opacity-40"
+          >
+            {save.isPending ? 'Enregistrement...' : 'Enregistrer'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function AssociationDetailPage() {
   const params = useParams()
   const router = useRouter()
   const qc = useQueryClient()
   const { user, clearAuth } = useAuthStore()
   const assocId = Number(params.id)
+  const [showEdit, setShowEdit] = useState(false)
 
   const userMeta = user ? {
     full_name: `${user.first_name} ${user.last_name}`,
@@ -119,17 +228,40 @@ export default function AssociationDetailPage() {
   }
 
   const isCreator = user?.id === assoc.created_by.id
+  const myMembership = members.find(m => m.user.id === user?.id)
+  const canEdit = isCreator || myMembership?.role === 'president' || myMembership?.role === 'board'
 
   return (
     <AppLayout user={userMeta} onLogout={() => { clearAuth(); router.push('/auth/login') }}>
       <div className="max-w-3xl mx-auto px-4 py-6">
+        {showEdit && (
+          <EditAssociationModal
+            assoc={assoc}
+            onClose={() => setShowEdit(false)}
+            onSaved={() => {
+              qc.invalidateQueries({ queryKey: ['association', assocId] })
+              qc.invalidateQueries({ queryKey: ['associations'] })
+            }}
+          />
+        )}
+
         {/* Back */}
-        <button
-          onClick={() => router.back()}
-          className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-800 mb-4"
-        >
-          <ArrowLeft size={16} /> Retour
-        </button>
+        <div className="flex items-center justify-between mb-4">
+          <button
+            onClick={() => router.back()}
+            className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-800"
+          >
+            <ArrowLeft size={16} /> Retour
+          </button>
+          {canEdit && (
+            <button
+              onClick={() => setShowEdit(true)}
+              className="flex items-center gap-1.5 text-sm font-medium text-ci-green hover:text-ci-green-dark transition"
+            >
+              <Pencil size={14} /> Modifier
+            </button>
+          )}
+        </div>
 
         {/* Header */}
         <div className="bg-white border border-gray-200 rounded-2xl p-6 mb-5">
