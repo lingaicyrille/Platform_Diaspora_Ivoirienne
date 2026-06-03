@@ -12,19 +12,24 @@ class CreatorSerializer(serializers.Serializer):
 class GroupSerializer(serializers.ModelSerializer):
     creator = CreatorSerializer(read_only=True)
     member_count = serializers.SerializerMethodField()
+    post_count = serializers.SerializerMethodField()
     is_member = serializers.SerializerMethodField()
 
     class Meta:
         model = Group
         fields = [
             'id', 'name', 'description', 'avatar', 'type',
-            'creator', 'member_count', 'is_member',
+            'creator', 'member_count', 'post_count', 'is_member',
             'created_at', 'updated_at',
         ]
 
     @extend_schema_field(serializers.IntegerField())
     def get_member_count(self, obj):
         return obj.memberships.count()
+
+    @extend_schema_field(serializers.IntegerField())
+    def get_post_count(self, obj):
+        return obj.posts.count()
 
     @extend_schema_field(serializers.BooleanField())
     def get_is_member(self, obj):

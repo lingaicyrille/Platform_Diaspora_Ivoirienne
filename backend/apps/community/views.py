@@ -1,5 +1,7 @@
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
+from rest_framework.exceptions import PermissionDenied
+from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
@@ -13,10 +15,17 @@ from .serializers import (
 )
 
 
+class StandardPagination(PageNumberPagination):
+    page_size = 20
+    page_size_query_param = 'page_size'
+    max_page_size = 100
+
+
 class GroupViewSet(viewsets.ModelViewSet):
-    queryset = Group.objects.all().select_related('creator').prefetch_related('memberships')
+    queryset = Group.objects.all().select_related('creator').prefetch_related('memberships', 'posts')
     serializer_class = GroupSerializer
     permission_classes = [IsAuthenticated]
+    pagination_class = StandardPagination
 
     def get_serializer_context(self):
         context = super().get_serializer_context()
@@ -49,13 +58,26 @@ class GroupViewSet(viewsets.ModelViewSet):
         Membership.objects.filter(user=request.user, group=group).delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
+    @action(detail=True, methods=['get'])
+    def members(self, request, pk=None):
+        group = self.get_object()
+        memberships = group.memberships.select_related('user').order_by('joined_at')
+        serializer = MembershipSerializer(memberships, many=True)
+        return Response(serializer.data)
+
 
 class PostViewSet(viewsets.ModelViewSet):
     queryset = Post.objects.all().select_related('author').prefetch_related('comments', 'reactions')
     serializer_class = PostSerializer
     permission_classes = [IsAuthenticated]
+    pagination_class = StandardPagination
 
     def perform_create(self, serializer):
+        group = serializer.validated_data.get('group')
+        if group and group.type == 'private':
+            is_member = Membership.objects.filter(user=self.request.user, group=group).exists()
+            if not is_member:
+                raise PermissionDenied("Vous devez être membre pour poster dans ce groupe privé.")
         serializer.save(author=self.request.user)
 
     def get_queryset(self):
@@ -70,6 +92,7 @@ class CommentViewSet(viewsets.ModelViewSet):
     queryset = Comment.objects.all().select_related('author', 'post')
     serializer_class = CommentSerializer
     permission_classes = [IsAuthenticated]
+    pagination_class = StandardPagination
     http_method_names = ['get', 'post', 'delete', 'head', 'options']
 
     def perform_create(self, serializer):
@@ -87,6 +110,7 @@ class ReactionViewSet(viewsets.ModelViewSet):
     queryset = Reaction.objects.all().select_related('user', 'post')
     serializer_class = ReactionSerializer
     permission_classes = [IsAuthenticated]
+    pagination_class = StandardPagination
     http_method_names = ['get', 'post', 'delete', 'head', 'options']
 
     def perform_create(self, serializer):

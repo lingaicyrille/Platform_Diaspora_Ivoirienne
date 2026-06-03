@@ -236,7 +236,10 @@ export default function CommunityPage() {
                       Rejoindre
                     </button>
                   )}
-                  <button className="p-2 rounded-xl border border-gray-200 text-gray-400 hover:text-blue-500 hover:border-blue-200 transition">
+                  <button
+                    onClick={() => router.push(`/community/${g.id}`)}
+                    className="p-2 rounded-xl border border-gray-200 text-gray-400 hover:text-blue-500 hover:border-blue-200 transition"
+                  >
                     <ChevronRight size={14} />
                   </button>
                 </div>
