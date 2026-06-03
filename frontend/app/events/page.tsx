@@ -2,7 +2,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Calendar, MapPin, Wifi, Plus, Users, Clock, X, CheckCircle } from 'lucide-react'
+import { Calendar, MapPin, Wifi, Plus, Users, Clock, X, CheckCircle, LayoutGrid, CalendarDays, ChevronRight } from 'lucide-react'
 import { AppLayout } from '@/components/layout/app-layout'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -24,8 +24,8 @@ interface Event {
   online_link: string
   capacity: number | null
   category: string
-  rsvp_count: number
-  user_rsvp: string | null
+  attendee_count: number
+  user_rsvp_status: string | null
 }
 
 const categoryColors: Record<string, string> = {
@@ -133,6 +133,7 @@ export default function EventsPage() {
   const [category, setCategory] = useState('')
   const [onlineOnly, setOnlineOnly] = useState(false)
   const [showCreate, setShowCreate] = useState(false)
+  const [view, setView] = useState<'grid' | 'calendar'>('grid')
 
   const { data, isLoading } = useQuery<{ results: Event[] }>({
     queryKey: ['events', category, onlineOnly],
@@ -197,7 +198,17 @@ export default function EventsPage() {
           </div>
         </div>
 
-        {/* Filters */}
+        {/* View toggle + Filters */}
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex gap-1 bg-gray-100 p-1 rounded-xl">
+            <button onClick={() => setView('grid')} className={cn('p-2 rounded-lg transition', view === 'grid' ? 'bg-white shadow-sm text-purple-600' : 'text-gray-500 hover:text-gray-700')}>
+              <LayoutGrid size={15} />
+            </button>
+            <button onClick={() => setView('calendar')} className={cn('p-2 rounded-lg transition', view === 'calendar' ? 'bg-white shadow-sm text-purple-600' : 'text-gray-500 hover:text-gray-700')}>
+              <CalendarDays size={15} />
+            </button>
+          </div>
+        </div>
         <div className="flex flex-wrap gap-2 mb-6">
           <button
             onClick={() => setCategory('')}
@@ -222,8 +233,46 @@ export default function EventsPage() {
           </button>
         </div>
 
+        {/* Calendar view */}
+        {view === 'calendar' && !isLoading && events.length > 0 && (
+          <div className="bg-white rounded-2xl shadow-card p-5 mb-4">
+            <div className="space-y-2">
+              {Object.entries(
+                events.reduce((acc, ev) => {
+                  const month = new Date(ev.start_datetime).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })
+                  if (!acc[month]) acc[month] = []
+                  acc[month].push(ev)
+                  return acc
+                }, {} as Record<string, Event[]>)
+              ).map(([month, evs]) => (
+                <div key={month}>
+                  <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider py-2 capitalize">{month}</h4>
+                  {evs.map(ev => (
+                    <div key={ev.id} onClick={() => router.push(`/events/${ev.id}`)}
+                      className="flex items-center gap-4 p-3 rounded-xl hover:bg-gray-50 cursor-pointer transition group">
+                      <div className="w-12 text-center flex-shrink-0">
+                        <div className="text-lg font-black text-purple-600 leading-none">
+                          {new Date(ev.start_datetime).getDate()}
+                        </div>
+                        <div className="text-[10px] text-gray-400 uppercase">
+                          {new Date(ev.start_datetime).toLocaleDateString('fr-FR', { weekday: 'short' })}
+                        </div>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-gray-800 truncate">{ev.title}</p>
+                        <p className="text-xs text-gray-400">{ev.is_online ? 'En ligne' : [ev.city, ev.country].filter(Boolean).join(', ')}</p>
+                      </div>
+                      <ChevronRight size={14} className="text-gray-300 group-hover:text-gray-500 flex-shrink-0" />
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Events grid */}
-        {isLoading ? (
+        {view === 'grid' && isLoading ? (
           <div className="grid sm:grid-cols-2 gap-4">
             {[...Array(4)].map((_, i) => (
               <div key={i} className="bg-white rounded-2xl p-5 space-y-3">
@@ -233,7 +282,7 @@ export default function EventsPage() {
               </div>
             ))}
           </div>
-        ) : events.length === 0 ? (
+        ) : view === 'grid' && events.length === 0 ? (
           <div className="text-center py-20">
             <Calendar size={40} className="text-gray-200 mx-auto mb-4" />
             <p className="text-gray-500 font-medium">Aucun événement trouvé</p>
@@ -241,10 +290,10 @@ export default function EventsPage() {
               Organiser le premier
             </button>
           </div>
-        ) : (
+        ) : view === 'grid' ? (
           <div className="grid sm:grid-cols-2 gap-4">
             {events.map(ev => (
-              <div key={ev.id} className="bg-white rounded-2xl p-5 shadow-card hover:shadow-card-hover transition-shadow flex flex-col">
+              <div key={ev.id} className="bg-white rounded-2xl p-5 shadow-card hover:shadow-card-hover transition-shadow flex flex-col cursor-pointer" onClick={() => router.push(`/events/${ev.id}`)}>
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex-1 min-w-0 mr-3">
                     <h3 className="font-bold text-gray-900 text-sm leading-snug mb-1">{ev.title}</h3>
@@ -271,13 +320,13 @@ export default function EventsPage() {
                   </div>
                   <div className="flex items-center gap-2 text-xs text-gray-500">
                     <Users size={12} className="text-gray-400 flex-shrink-0" />
-                    {ev.rsvp_count} participant{ev.rsvp_count !== 1 ? 's' : ''}
+                    {ev.attendee_count} participant{ev.attendee_count !== 1 ? 's' : ''}
                     {ev.capacity && ` · Max ${ev.capacity}`}
                   </div>
                 </div>
 
-                <div className="mt-auto">
-                  {ev.user_rsvp === 'going' ? (
+                <div className="mt-auto" onClick={e => e.stopPropagation()}>
+                  {ev.user_rsvp_status === 'going' ? (
                     <button
                       onClick={() => rsvp.mutate({ id: ev.id, status: 'not_going' })}
                       className="w-full py-2 flex items-center justify-center gap-2 border border-green-200 bg-green-50 text-green-700 rounded-xl text-xs font-semibold hover:bg-green-100 transition"
@@ -290,7 +339,7 @@ export default function EventsPage() {
                       disabled={rsvp.isPending}
                       className="w-full py-2 bg-purple-600 text-white rounded-xl text-xs font-semibold hover:bg-purple-700 transition disabled:opacity-40"
                     >
-                      {ev.user_rsvp === 'maybe' ? 'Confirmer ma présence' : 'Participer'}
+                      {ev.user_rsvp_status === 'maybe' ? 'Confirmer ma présence' : 'Participer'}
                     </button>
                   )}
                 </div>
