@@ -250,6 +250,18 @@ export default function EventDetailPage() {
                 <p className="text-sm text-gray-500">
                   {[event.city, event.country].filter(Boolean).join(', ')}
                 </p>
+                {(event.address || event.city) && (
+                  <a
+                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+                      [event.address, event.city, event.country].filter(Boolean).join(', ')
+                    )}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1 text-sm text-ci-green hover:underline mt-0.5"
+                  >
+                    Voir sur la carte <ExternalLink size={13} />
+                  </a>
+                )}
               </div>
             </div>
           )}

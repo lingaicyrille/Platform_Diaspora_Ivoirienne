@@ -48,13 +48,24 @@ function CreateEventModal({ onClose, onCreated }: { onClose: () => void; onCreat
     start_datetime: '', end_datetime: '', is_online: false,
     online_link: '', category: 'other', capacity: '',
   })
+  const [coverImage, setCoverImage] = useState<File | null>(null)
+  const [coverPreview, setCoverPreview] = useState<string | null>(null)
   const set = (k: string, v: string | boolean) => setForm(f => ({ ...f, [k]: v }))
 
+  function handleCoverChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0] ?? null
+    setCoverImage(file)
+    setCoverPreview(file ? URL.createObjectURL(file) : null)
+  }
+
   const create = useMutation({
-    mutationFn: () => api.post('/api/events/events/', {
-      ...form,
-      capacity: form.capacity ? parseInt(form.capacity) : null,
-    }),
+    mutationFn: () => {
+      const fd = new FormData()
+      Object.entries(form).forEach(([k, v]) => fd.append(k, String(v)))
+      fd.set('capacity', form.capacity ? String(parseInt(form.capacity)) : '')
+      if (coverImage) fd.append('cover_image', coverImage)
+      return api.post('/api/events/events/', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
+    },
     onSuccess: () => { onCreated(); onClose() },
   })
 
@@ -71,6 +82,25 @@ function CreateEventModal({ onClose, onCreated }: { onClose: () => void; onCreat
 
         <textarea value={form.description} onChange={e => set('description', e.target.value)} placeholder="Description" rows={3}
           className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ci-orange/20 focus:border-ci-orange resize-none" />
+
+        {/* Cover image */}
+        <div>
+          <label className="text-xs text-gray-500 mb-1 block">Image de couverture (optionnel)</label>
+          {coverPreview ? (
+            <div className="relative">
+              <img src={coverPreview} alt="preview" className="w-full h-32 object-cover rounded-xl" />
+              <button onClick={() => { setCoverImage(null); setCoverPreview(null) }}
+                className="absolute top-2 right-2 bg-black/50 text-white rounded-full p-1 hover:bg-black/70">
+                <X size={12} />
+              </button>
+            </div>
+          ) : (
+            <label className="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed border-gray-200 rounded-xl cursor-pointer hover:border-ci-orange transition">
+              <span className="text-xs text-gray-400">Cliquez pour uploader une image</span>
+              <input type="file" accept="image/*" onChange={handleCoverChange} className="hidden" />
+            </label>
+          )}
+        </div>
 
         <div className="grid grid-cols-2 gap-3">
           <div>
