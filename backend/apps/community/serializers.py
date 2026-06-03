@@ -39,8 +39,14 @@ class GroupSerializer(serializers.ModelSerializer):
         return False
 
 
+class MemberUserSerializer(serializers.Serializer):
+    id = serializers.IntegerField(read_only=True)
+    first_name = serializers.CharField(read_only=True)
+    last_name = serializers.CharField(read_only=True)
+
+
 class MembershipSerializer(serializers.ModelSerializer):
-    user = serializers.PrimaryKeyRelatedField(read_only=True)
+    user = MemberUserSerializer(read_only=True)
     group = serializers.PrimaryKeyRelatedField(read_only=True)
 
     class Meta:

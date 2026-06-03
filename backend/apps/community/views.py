@@ -113,6 +113,13 @@ class ReactionViewSet(viewsets.ModelViewSet):
     pagination_class = StandardPagination
     http_method_names = ['get', 'post', 'delete', 'head', 'options']
 
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        post_id = self.request.query_params.get('post')
+        if post_id is not None:
+            queryset = queryset.filter(post__id=post_id)
+        return queryset
+
     def perform_create(self, serializer):
         from rest_framework.exceptions import ValidationError as DRFValidationError
         post = serializer.validated_data.get('post')

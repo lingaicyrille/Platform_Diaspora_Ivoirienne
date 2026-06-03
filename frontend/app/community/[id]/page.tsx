@@ -43,7 +43,7 @@ interface Post {
 
 interface Member {
   id: number
-  user: number
+  user: Author
   group: number
   role: string
   joined_at: string
@@ -82,14 +82,29 @@ function PostComposer({ groupId, isMember, groupType, onPosted }: {
   groupId: number; isMember: boolean; groupType: string; onPosted: () => void
 }) {
   const [content, setContent] = useState('')
+  const [image, setImage] = useState<File | null>(null)
+  const [preview, setPreview] = useState<string | null>(null)
   const { user } = useAuthStore()
 
   const canPost = isMember || groupType === 'public'
 
   const create = useMutation({
-    mutationFn: () => api.post('/api/community/posts/', { content, group: groupId }),
-    onSuccess: () => { setContent(''); onPosted() },
+    mutationFn: () => {
+      const form = new FormData()
+      form.append('content', content)
+      form.append('group', String(groupId))
+      if (image) form.append('image', image)
+      return api.post('/api/community/posts/', form, { headers: { 'Content-Type': 'multipart/form-data' } })
+    },
+    onSuccess: () => { setContent(''); setImage(null); setPreview(null); onPosted() },
   })
+
+  const handleImage = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setImage(file)
+    setPreview(URL.createObjectURL(file))
+  }
 
   if (!canPost) return null
 
@@ -105,10 +120,22 @@ function PostComposer({ groupId, isMember, groupType, onPosted }: {
           className="flex-1 border border-gray-200 rounded-xl px-4 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400 transition"
         />
       </div>
+      {preview && (
+        <div className="relative pl-12">
+          <img src={preview} alt="preview" className="rounded-xl max-h-40 object-cover" />
+          <button
+            onClick={() => { setImage(null); setPreview(null) }}
+            className="absolute top-1 right-1 p-1 bg-black/50 text-white rounded-lg hover:bg-black/70 transition"
+          >
+            <X size={12} />
+          </button>
+        </div>
+      )}
       <div className="flex items-center justify-between pl-12">
-        <button className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-blue-500 transition">
+        <label className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-blue-500 transition cursor-pointer">
           <ImageIcon size={14} /> Photo
-        </button>
+          <input type="file" accept="image/*" className="hidden" onChange={handleImage} />
+        </label>
         <button
           onClick={() => create.mutate()}
           disabled={!content.trim() || create.isPending}
@@ -449,12 +476,10 @@ function MembersList({ groupId }: { groupId: number }) {
     <div className="divide-y divide-gray-50 max-h-64 overflow-y-auto">
       {members.slice(0, 10).map(m => (
         <div key={m.id} className="flex items-center gap-3 px-5 py-3 hover:bg-gray-50 transition-colors">
-          <div className="w-8 h-8 rounded-xl bg-gradient-ci flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
-            {String(m.user).slice(0, 1)}
-          </div>
+          <Avatar name={`${m.user.first_name} ${m.user.last_name}`} size={8} />
           <div className="flex-1 min-w-0">
-            <p className="text-xs font-medium text-gray-700 truncate">Membre #{m.user}</p>
-            <p className="text-[10px] text-gray-400">{m.role}</p>
+            <p className="text-xs font-medium text-gray-700 truncate">{m.user.first_name} {m.user.last_name}</p>
+            <p className="text-[10px] text-gray-400 capitalize">{m.role}</p>
           </div>
         </div>
       ))}
