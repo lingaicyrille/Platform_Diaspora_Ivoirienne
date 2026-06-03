@@ -17,6 +17,7 @@ interface Association {
   category: string
   country: string
   city: string
+  logo: string | null
   website: string
   contact_email: string
   is_verified: boolean
@@ -42,10 +43,23 @@ function CreateAssociationModal({ onClose, onCreated }: { onClose: () => void; o
     name: '', description: '', category: 'other',
     country: '', city: '', website: '', contact_email: '',
   })
+  const [logo, setLogo] = useState<File | null>(null)
+  const [logoPreview, setLogoPreview] = useState<string | null>(null)
   const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }))
 
+  function handleLogoChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0] ?? null
+    setLogo(file)
+    setLogoPreview(file ? URL.createObjectURL(file) : null)
+  }
+
   const create = useMutation({
-    mutationFn: () => api.post('/api/associations/associations/', form),
+    mutationFn: () => {
+      const fd = new FormData()
+      Object.entries(form).forEach(([k, v]) => fd.append(k, v))
+      if (logo) fd.append('logo', logo)
+      return api.post('/api/associations/associations/', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
+    },
     onSuccess: () => { onCreated(); onClose() },
   })
 
@@ -60,6 +74,26 @@ function CreateAssociationModal({ onClose, onCreated }: { onClose: () => void; o
           className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ci-orange/20 focus:border-ci-orange" />
         <textarea value={form.description} onChange={e => set('description', e.target.value)} placeholder="Description (mission, activités...)" rows={3}
           className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ci-orange/20 focus:border-ci-orange resize-none" />
+
+        {/* Logo */}
+        <div>
+          <label className="text-xs text-gray-500 mb-1 block">Logo (optionnel)</label>
+          {logoPreview ? (
+            <div className="relative w-20 h-20">
+              <img src={logoPreview} alt="logo" className="w-20 h-20 object-cover rounded-xl border border-gray-200" />
+              <button onClick={() => { setLogo(null); setLogoPreview(null) }}
+                className="absolute -top-1.5 -right-1.5 bg-white border border-gray-200 text-gray-500 rounded-full p-0.5 hover:bg-gray-100">
+                <X size={10} />
+              </button>
+            </div>
+          ) : (
+            <label className="flex items-center justify-center w-20 h-20 border-2 border-dashed border-gray-200 rounded-xl cursor-pointer hover:border-ci-green transition">
+              <span className="text-[10px] text-gray-400 text-center leading-tight px-1">Ajouter logo</span>
+              <input type="file" accept="image/*" onChange={handleLogoChange} className="hidden" />
+            </label>
+          )}
+        </div>
+
         <div className="grid grid-cols-2 gap-3">
           <select value={form.category} onChange={e => set('category', e.target.value)}
             className="border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ci-orange/20 focus:border-ci-orange">
@@ -213,9 +247,16 @@ export default function AssociationsPage() {
         ) : (
           <div className="grid sm:grid-cols-2 gap-4">
             {associations.map(a => (
-              <div key={a.id} className="bg-white rounded-2xl p-5 shadow-card hover:shadow-card-hover transition-shadow flex flex-col">
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex-1 min-w-0 mr-3">
+              <div key={a.id} onClick={() => router.push(`/associations/${a.id}`)} className="bg-white rounded-2xl p-5 shadow-card hover:shadow-card-hover transition-shadow flex flex-col cursor-pointer">
+                <div className="flex items-start gap-3 mb-3">
+                  {a.logo ? (
+                    <img src={a.logo} alt={a.name} className="w-10 h-10 rounded-xl object-cover border border-gray-100 flex-shrink-0" />
+                  ) : (
+                    <div className="w-10 h-10 rounded-xl bg-ci-green/10 flex items-center justify-center flex-shrink-0">
+                      <Building2 size={16} className="text-ci-green" />
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5">
                       <h3 className="font-bold text-gray-900 text-sm truncate">{a.name}</h3>
                       {a.is_verified && <BadgeCheck size={13} className="text-green-500 flex-shrink-0" />}
@@ -248,7 +289,7 @@ export default function AssociationsPage() {
                 <div className="mt-auto">
                   {a.is_member ? (
                     <button
-                      onClick={() => leave.mutate(a.id)}
+                      onClick={e => { e.stopPropagation(); leave.mutate(a.id) }}
                       disabled={leave.isPending}
                       className="w-full py-2 border border-gray-200 rounded-xl text-xs font-medium text-gray-600 hover:bg-gray-50 transition disabled:opacity-40"
                     >
@@ -256,7 +297,7 @@ export default function AssociationsPage() {
                     </button>
                   ) : (
                     <button
-                      onClick={() => join.mutate(a.id)}
+                      onClick={e => { e.stopPropagation(); join.mutate(a.id) }}
                       disabled={join.isPending}
                       className="w-full py-2 bg-ci-green text-white rounded-xl text-xs font-semibold hover:bg-ci-green-dark transition disabled:opacity-40"
                     >
