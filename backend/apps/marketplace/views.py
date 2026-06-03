@@ -5,7 +5,7 @@ from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from .models import Listing, Offer
+from .models import Listing, ListingImage, Offer
 from .serializers import ListingSerializer, OfferSerializer
 
 
@@ -21,8 +21,15 @@ class ListingViewSet(viewsets.ModelViewSet):
     pagination_class = StandardPagination
 
     def get_queryset(self):
-        qs = Listing.objects.filter(is_active=True).select_related('seller').prefetch_related('offers')
         params = self.request.query_params
+        mine = params.get('mine')
+
+        if mine == 'true':
+            qs = Listing.objects.filter(seller=self.request.user)
+        else:
+            qs = Listing.objects.filter(is_active=True)
+
+        qs = qs.select_related('seller').prefetch_related('offers', 'images')
 
         category = params.get('category')
         condition = params.get('condition')
@@ -44,7 +51,9 @@ class ListingViewSet(viewsets.ModelViewSet):
         return qs
 
     def perform_create(self, serializer):
-        serializer.save(seller=self.request.user)
+        listing = serializer.save(seller=self.request.user)
+        for i, file in enumerate(self.request.FILES.getlist('images')):
+            ListingImage.objects.create(listing=listing, image=file, order=i)
 
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
     def make_offer(self, request, pk=None):
@@ -65,9 +74,16 @@ class OfferViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         qs = Offer.objects.all().select_related('buyer', 'listing', 'listing__seller')
-        listing_id = self.request.query_params.get('listing')
+        params = self.request.query_params
+
+        listing_id = params.get('listing')
+        mine = params.get('mine')
+
         if listing_id:
             qs = qs.filter(listing_id=listing_id)
+        if mine == 'true':
+            qs = qs.filter(buyer=self.request.user)
+
         return qs
 
     def partial_update(self, request, *args, **kwargs):

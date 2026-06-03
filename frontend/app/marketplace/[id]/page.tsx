@@ -22,6 +22,7 @@ interface Listing {
   category: string
   condition: 'new' | 'used'
   image: string | null
+  images: { id: number; image: string }[]
   location: string
   is_active: boolean
   offer_count: number
@@ -58,6 +59,7 @@ export default function ListingDetailPage() {
 
   const [offerAmount, setOfferAmount] = useState('')
   const [offerMessage, setOfferMessage] = useState('')
+  const [activeImg, setActiveImg] = useState(0)
 
   const userMeta = user ? {
     full_name: `${user.first_name} ${user.last_name}`,
@@ -131,13 +133,27 @@ export default function ListingDetailPage() {
           <ArrowLeft size={16} /> Retour
         </button>
 
-        {/* Image */}
-        {listing.image ? (
-          <img
-            src={listing.image}
-            alt={listing.title}
-            className="w-full h-72 object-cover rounded-2xl mb-5"
-          />
+        {/* Image gallery */}
+        {listing.images.length > 0 ? (
+          <div className="mb-5">
+            <img
+              src={listing.images[activeImg]?.image}
+              alt={listing.title}
+              className="w-full h-72 object-cover rounded-2xl"
+            />
+            {listing.images.length > 1 && (
+              <div className="flex gap-2 mt-2">
+                {listing.images.map((img, idx) => (
+                  <button key={img.id} onClick={() => setActiveImg(idx)}
+                    className={cn('w-14 h-14 rounded-xl overflow-hidden border-2 transition', idx === activeImg ? 'border-pink-500' : 'border-transparent')}>
+                    <img src={img.image} alt="" className="w-full h-full object-cover" />
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        ) : listing.image ? (
+          <img src={listing.image} alt={listing.title} className="w-full h-72 object-cover rounded-2xl mb-5" />
         ) : (
           <div className="w-full h-48 rounded-2xl bg-gradient-to-br from-pink-50 to-rose-100 flex items-center justify-center mb-5">
             <ShoppingBag size={48} className="text-pink-300" />

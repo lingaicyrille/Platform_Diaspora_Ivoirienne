@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query'
 import {
   Users, Calendar, Briefcase, MessageCircle, TrendingUp,
   MapPin, Globe, ArrowRight, Bell, Flame, Star, Clock,
+  ShoppingBag, Tag, PackageCheck,
 } from 'lucide-react'
 import { AppLayout } from '@/components/layout/app-layout'
 import { StatCard } from '@/components/ui/stat-card'
@@ -47,6 +48,24 @@ interface Notification {
   title: string
   body: string
   is_read: boolean
+  created_at: string
+}
+
+interface MyListing {
+  id: number
+  title: string
+  price: string
+  currency: string
+  condition: string
+  offer_count: number
+  is_active: boolean
+}
+
+interface MyOffer {
+  id: number
+  listing: number
+  amount: string
+  status: 'pending' | 'accepted' | 'rejected'
   created_at: string
 }
 
@@ -131,6 +150,18 @@ export default function DashboardPage() {
     enabled: !!user,
   })
 
+  const { data: myListingsData } = useQuery<{ results: MyListing[] }>({
+    queryKey: ['my-listings'],
+    queryFn: () => api.get('/api/marketplace/listings/?mine=true&page_size=5').then(r => r.data),
+    enabled: !!user,
+  })
+
+  const { data: myOffersData } = useQuery<{ results: MyOffer[] }>({
+    queryKey: ['my-offers'],
+    queryFn: () => api.get('/api/marketplace/offers/?mine=true&page_size=5').then(r => r.data),
+    enabled: !!user,
+  })
+
   if (!isLoading && !user && typeof window !== 'undefined') {
     if (!getRefreshToken() && !cachedUser) {
       router.push('/auth/login')
@@ -167,6 +198,17 @@ export default function DashboardPage() {
   const events = eventsData?.results ?? []
   const members = membersData?.results ?? []
   const notifications = notificationsData?.results ?? []
+  const myListings = myListingsData?.results ?? []
+  const myOffers = myOffersData?.results ?? []
+
+  const offerStatusLabel: Record<string, string> = {
+    pending: 'En attente', accepted: 'Acceptée', rejected: 'Refusée',
+  }
+  const offerStatusColor: Record<string, string> = {
+    pending: 'text-yellow-600 bg-yellow-50',
+    accepted: 'text-green-600 bg-green-50',
+    rejected: 'text-red-500 bg-red-50',
+  }
 
   return (
     <AppLayout title="Tableau de bord" user={user!} onLogout={handleLogout}>
@@ -336,6 +378,77 @@ export default function DashboardPage() {
                 </div>
               )}
             </div>
+          </div>
+        </div>
+
+        {/* Marketplace — My listings & My offers */}
+        <div className="grid lg:grid-cols-2 gap-5">
+          {/* My listings */}
+          <div className="bg-white rounded-2xl shadow-card overflow-hidden">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-50">
+              <h3 className="font-bold text-gray-900 text-sm flex items-center gap-2">
+                <ShoppingBag size={15} className="text-pink-500" /> Mes annonces
+              </h3>
+              <a href="/marketplace" className="text-xs text-ci-orange font-semibold hover:underline flex items-center gap-1">
+                Gérer <ArrowRight size={12} />
+              </a>
+            </div>
+            {myListings.length === 0 ? (
+              <div className="py-8 text-center text-sm text-gray-400">Aucune annonce publiée.</div>
+            ) : (
+              <div className="divide-y divide-gray-50">
+                {myListings.map(l => (
+                  <a key={l.id} href={`/marketplace/${l.id}`} className="flex items-center gap-3 px-5 py-3 hover:bg-gray-50/50 transition-colors">
+                    <div className="w-8 h-8 rounded-lg bg-pink-50 flex items-center justify-center flex-shrink-0">
+                      <Tag size={13} className="text-pink-500" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-800 truncate">{l.title}</p>
+                      <p className="text-xs text-gray-400">
+                        {parseFloat(l.price).toLocaleString('fr-FR')} {l.currency} · {l.offer_count} offre{l.offer_count !== 1 ? 's' : ''}
+                      </p>
+                    </div>
+                    <span className={cn('text-[10px] font-semibold px-2 py-0.5 rounded-full', l.is_active ? 'bg-green-50 text-green-600' : 'bg-gray-100 text-gray-500')}>
+                      {l.is_active ? 'Active' : 'Inactive'}
+                    </span>
+                  </a>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* My offers */}
+          <div className="bg-white rounded-2xl shadow-card overflow-hidden">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-50">
+              <h3 className="font-bold text-gray-900 text-sm flex items-center gap-2">
+                <PackageCheck size={15} className="text-indigo-500" /> Mes offres envoyées
+              </h3>
+              <a href="/marketplace" className="text-xs text-ci-orange font-semibold hover:underline flex items-center gap-1">
+                Explorer <ArrowRight size={12} />
+              </a>
+            </div>
+            {myOffers.length === 0 ? (
+              <div className="py-8 text-center text-sm text-gray-400">Aucune offre envoyée.</div>
+            ) : (
+              <div className="divide-y divide-gray-50">
+                {myOffers.map(o => (
+                  <a key={o.id} href={`/marketplace/${o.listing}`} className="flex items-center gap-3 px-5 py-3 hover:bg-gray-50/50 transition-colors">
+                    <div className="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center flex-shrink-0">
+                      <PackageCheck size={13} className="text-indigo-500" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-800">Offre #{o.id} — Annonce #{o.listing}</p>
+                      <p className="text-xs text-gray-400">
+                        {parseFloat(o.amount).toLocaleString('fr-FR')} · {new Date(o.created_at).toLocaleDateString('fr-FR')}
+                      </p>
+                    </div>
+                    <span className={cn('text-[10px] font-semibold px-2 py-0.5 rounded-full', offerStatusColor[o.status])}>
+                      {offerStatusLabel[o.status]}
+                    </span>
+                  </a>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 

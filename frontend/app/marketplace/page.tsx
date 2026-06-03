@@ -19,6 +19,7 @@ interface Listing {
   category: string
   condition: 'new' | 'used'
   image: string | null
+  images: { id: number; image: string }[]
   location: string
   is_active: boolean
   offer_count: number
@@ -35,21 +36,26 @@ function CreateListingModal({ onClose, onCreated }: { onClose: () => void; onCre
     title: '', description: '', price: '', currency: 'EUR',
     category: 'other', condition: 'used', location: '',
   })
-  const [image, setImage] = useState<File | null>(null)
-  const [imagePreview, setImagePreview] = useState<string | null>(null)
+  const [images, setImages] = useState<File[]>([])
+  const [previews, setPreviews] = useState<string[]>([])
   const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }))
 
   function handleImageChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0] ?? null
-    setImage(file)
-    setImagePreview(file ? URL.createObjectURL(file) : null)
+    const files = Array.from(e.target.files ?? [])
+    setImages(prev => [...prev, ...files].slice(0, 5))
+    setPreviews(prev => [...prev, ...files.map(f => URL.createObjectURL(f))].slice(0, 5))
+  }
+
+  function removeImage(idx: number) {
+    setImages(prev => prev.filter((_, i) => i !== idx))
+    setPreviews(prev => prev.filter((_, i) => i !== idx))
   }
 
   const create = useMutation({
     mutationFn: () => {
       const fd = new FormData()
       Object.entries(form).forEach(([k, v]) => fd.append(k, v))
-      if (image) fd.append('image', image)
+      images.forEach(img => fd.append('images', img))
       return api.post('/api/marketplace/listings/', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
     },
     onSuccess: () => { onCreated(); onClose() },
@@ -67,21 +73,26 @@ function CreateListingModal({ onClose, onCreated }: { onClose: () => void; onCre
         <textarea value={form.description} onChange={e => set('description', e.target.value)} placeholder="Description" rows={3}
           className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ci-orange/20 focus:border-ci-orange resize-none" />
 
-        {/* Image upload */}
+        {/* Image upload — up to 5 photos */}
         <div>
-          <label className="text-xs text-gray-500 mb-1 block">Photo (optionnel)</label>
-          {imagePreview ? (
-            <div className="relative">
-              <img src={imagePreview} alt="preview" className="w-full h-36 object-cover rounded-xl" />
-              <button onClick={() => { setImage(null); setImagePreview(null) }}
-                className="absolute top-2 right-2 bg-black/50 text-white rounded-full p-1 hover:bg-black/70">
-                <X size={12} />
-              </button>
+          <label className="text-xs text-gray-500 mb-1 block">Photos (max 5, optionnel)</label>
+          {previews.length > 0 && (
+            <div className="flex gap-2 flex-wrap mb-2">
+              {previews.map((src, idx) => (
+                <div key={idx} className="relative w-16 h-16">
+                  <img src={src} alt="" className="w-16 h-16 object-cover rounded-xl border border-gray-200" />
+                  <button onClick={() => removeImage(idx)}
+                    className="absolute -top-1.5 -right-1.5 bg-white border border-gray-200 text-gray-500 rounded-full p-0.5 hover:bg-gray-100">
+                    <X size={10} />
+                  </button>
+                </div>
+              ))}
             </div>
-          ) : (
-            <label className="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed border-gray-200 rounded-xl cursor-pointer hover:border-pink-400 transition">
-              <span className="text-xs text-gray-400">Cliquez pour ajouter une photo</span>
-              <input type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
+          )}
+          {previews.length < 5 && (
+            <label className="flex flex-col items-center justify-center w-full h-20 border-2 border-dashed border-gray-200 rounded-xl cursor-pointer hover:border-pink-400 transition">
+              <span className="text-xs text-gray-400">+ Ajouter des photos</span>
+              <input type="file" accept="image/*" multiple onChange={handleImageChange} className="hidden" />
             </label>
           )}
         </div>
@@ -273,8 +284,8 @@ export default function MarketplacePage() {
               const isOwn = l.seller.id === user?.id
               return (
                 <div key={l.id} onClick={() => router.push(`/marketplace/${l.id}`)} className="bg-white rounded-2xl shadow-card hover:shadow-card-hover transition-shadow flex flex-col cursor-pointer overflow-hidden">
-                  {l.image ? (
-                    <img src={l.image} alt={l.title} className="w-full h-36 object-cover" />
+                  {(l.images?.[0]?.image || l.image) ? (
+                    <img src={l.images?.[0]?.image || l.image!} alt={l.title} className="w-full h-36 object-cover" />
                   ) : (
                     <div className="w-full h-28 bg-gradient-to-br from-pink-50 to-rose-100 flex items-center justify-center">
                       <ShoppingBag size={28} className="text-pink-300" />
