@@ -4,12 +4,6 @@ from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly, IsAdminUser
 from rest_framework.response import Response
 
-
-class StandardPagination(PageNumberPagination):
-    page_size = 20
-    page_size_query_param = 'page_size'
-    max_page_size = 100
-
 from .models import Country, ImmigrationGuide, ImmigrationQuestion, ImmigrationAnswer
 from .serializers import (
     CountrySerializer,
@@ -17,6 +11,12 @@ from .serializers import (
     ImmigrationQuestionSerializer,
     ImmigrationAnswerSerializer,
 )
+
+
+class StandardPagination(PageNumberPagination):
+    page_size = 20
+    page_size_query_param = 'page_size'
+    max_page_size = 100
 
 
 class CountryViewSet(viewsets.ModelViewSet):
@@ -74,9 +74,14 @@ class ImmigrationQuestionViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
     def answer(self, request, pk=None):
         question = self.get_object()
-        serializer = ImmigrationAnswerSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        answer = serializer.save(question=question, author=request.user)
+        content = request.data.get('content', '').strip()
+        if not content:
+            return Response({'content': ['Ce champ est obligatoire.']}, status=status.HTTP_400_BAD_REQUEST)
+        answer = ImmigrationAnswer.objects.create(
+            question=question,
+            author=request.user,
+            content=content,
+        )
         question.is_answered = True
         question.save(update_fields=['is_answered'])
         return Response(ImmigrationAnswerSerializer(answer).data, status=status.HTTP_201_CREATED)
