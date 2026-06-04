@@ -1,7 +1,14 @@
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
+from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly, IsAdminUser
 from rest_framework.response import Response
+
+
+class StandardPagination(PageNumberPagination):
+    page_size = 20
+    page_size_query_param = 'page_size'
+    max_page_size = 100
 
 from .models import Country, ImmigrationGuide, ImmigrationQuestion, ImmigrationAnswer
 from .serializers import (
@@ -16,6 +23,7 @@ class CountryViewSet(viewsets.ModelViewSet):
     queryset = Country.objects.all()
     serializer_class = CountrySerializer
     permission_classes = [IsAuthenticatedOrReadOnly]
+    pagination_class = StandardPagination
 
     def get_queryset(self):
         queryset = super().get_queryset()
@@ -29,6 +37,7 @@ class ImmigrationGuideViewSet(viewsets.ModelViewSet):
     queryset = ImmigrationGuide.objects.all().select_related('country')
     serializer_class = ImmigrationGuideSerializer
     permission_classes = [IsAuthenticatedOrReadOnly]
+    pagination_class = StandardPagination
 
     def get_permissions(self):
         if self.action in ['create', 'update', 'partial_update', 'destroy']:
@@ -50,6 +59,7 @@ class ImmigrationQuestionViewSet(viewsets.ModelViewSet):
     queryset = ImmigrationQuestion.objects.all().select_related('user', 'country').prefetch_related('answers')
     serializer_class = ImmigrationQuestionSerializer
     permission_classes = [IsAuthenticatedOrReadOnly]
+    pagination_class = StandardPagination
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
@@ -76,6 +86,7 @@ class ImmigrationAnswerViewSet(viewsets.ModelViewSet):
     queryset = ImmigrationAnswer.objects.all().select_related('author', 'question')
     serializer_class = ImmigrationAnswerSerializer
     permission_classes = [IsAuthenticatedOrReadOnly]
+    pagination_class = StandardPagination
 
     def perform_create(self, serializer):
         serializer.save(author=self.request.user)
