@@ -62,11 +62,19 @@ class UserListView(generics.ListAPIView):
         qs = User.objects.filter(is_active=True)
         continent = self.request.query_params.get('continent')
         country = self.request.query_params.get('country')
+        search = self.request.query_params.get('search')
         ordering = self.request.query_params.get('ordering')
         if continent:
             qs = qs.filter(continent=continent)
         if country:
             qs = qs.filter(country_of_residence__icontains=country)
+        if search:
+            from django.db.models import Q
+            qs = qs.filter(
+                Q(first_name__icontains=search) |
+                Q(last_name__icontains=search) |
+                Q(email__icontains=search)
+            )
         if ordering and ordering in self.ALLOWED_ORDERING:
             qs = qs.order_by(ordering)
         return qs

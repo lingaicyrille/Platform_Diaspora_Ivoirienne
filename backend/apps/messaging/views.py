@@ -1,5 +1,6 @@
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
+from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
@@ -7,9 +8,16 @@ from .models import Conversation, Message
 from .serializers import ConversationSerializer, MessageSerializer
 
 
+class StandardPagination(PageNumberPagination):
+    page_size = 20
+    page_size_query_param = 'page_size'
+    max_page_size = 100
+
+
 class ConversationViewSet(viewsets.ModelViewSet):
     serializer_class = ConversationSerializer
     permission_classes = [IsAuthenticated]
+    pagination_class = StandardPagination
     http_method_names = ['get', 'post', 'delete', 'head', 'options']
 
     def get_queryset(self):
@@ -62,10 +70,19 @@ class ConversationViewSet(viewsets.ModelViewSet):
         serializer = MessageSerializer(message, context={'request': request})
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
+    @action(detail=True, methods=['post'])
+    def mark_read(self, request, pk=None):
+        conversation = self.get_object()
+        unread = conversation.messages.exclude(read_by=request.user)
+        for msg in unread:
+            msg.read_by.add(request.user)
+        return Response({'status': 'ok'})
+
 
 class MessageViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = MessageSerializer
     permission_classes = [IsAuthenticated]
+    pagination_class = StandardPagination
 
     def get_queryset(self):
         if getattr(self, 'swagger_fake_view', False):

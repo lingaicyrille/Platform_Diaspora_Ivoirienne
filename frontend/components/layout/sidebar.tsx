@@ -1,12 +1,14 @@
 'use client'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { useQuery } from '@tanstack/react-query'
 import {
   Home, Users, Calendar, Briefcase, ShoppingBag, Newspaper,
   Plane, Building2, MessageCircle, User, Settings, X, LogOut,
   Coins, HandHeart, GraduationCap,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import api from '@/lib/api'
 
 const mainNav = [
   { href: '/dashboard', icon: Home, label: 'Tableau de bord' },
@@ -17,7 +19,7 @@ const mainNav = [
   { href: '/news', icon: Newspaper, label: 'Actualités' },
   { href: '/immigration', icon: Plane, label: 'Immigration' },
   { href: '/associations', icon: Building2, label: 'Associations' },
-  { href: '/messaging', icon: MessageCircle, label: 'Messagerie' },
+  { href: '/messaging', icon: MessageCircle, label: 'Messagerie', unreadKey: true },
   { href: '/tontines', icon: Coins, label: 'Tontines' },
   { href: '/solidarity', icon: HandHeart, label: 'Solidarité' },
   { href: '/mentorship', icon: GraduationCap, label: 'Mentorat' },
@@ -37,6 +39,15 @@ interface SidebarProps {
 
 export function Sidebar({ isOpen, onClose, user, onLogout }: SidebarProps) {
   const pathname = usePathname()
+
+  const { data: convData } = useQuery<{ results: { unread_count: number }[] }>({
+    queryKey: ['conversations-unread'],
+    queryFn: () => api.get('/api/messaging/conversations/').then(r => r.data),
+    enabled: !!user,
+    refetchInterval: 30_000,
+  })
+
+  const totalUnread = convData?.results?.reduce((sum, c) => sum + (c.unread_count ?? 0), 0) ?? 0
 
   return (
     <>
@@ -75,6 +86,7 @@ export function Sidebar({ isOpen, onClose, user, onLogout }: SidebarProps) {
         <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-0.5">
           {mainNav.map((item) => {
             const active = pathname === item.href || pathname.startsWith(item.href + '/')
+            const badge = item.unreadKey && totalUnread > 0 ? totalUnread : null
             return (
               <Link
                 key={item.href}
@@ -92,6 +104,11 @@ export function Sidebar({ isOpen, onClose, user, onLogout }: SidebarProps) {
                   className={active ? 'text-ci-orange' : 'text-gray-400 group-hover:text-gray-600'}
                 />
                 <span className="flex-1">{item.label}</span>
+                {badge && (
+                  <span className="min-w-[18px] h-[18px] px-1 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                    {badge > 99 ? '99+' : badge}
+                  </span>
+                )}
               </Link>
             )
           })}
