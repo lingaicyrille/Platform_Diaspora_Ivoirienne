@@ -1,6 +1,7 @@
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
+from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
@@ -8,9 +9,16 @@ from .models import HelpRequest, HelpOffer
 from .serializers import HelpRequestSerializer, HelpOfferSerializer
 
 
+class StandardPagination(PageNumberPagination):
+    page_size = 20
+    page_size_query_param = 'page_size'
+    max_page_size = 100
+
+
 class HelpRequestViewSet(viewsets.ModelViewSet):
     serializer_class = HelpRequestSerializer
     permission_classes = [IsAuthenticated]
+    pagination_class = StandardPagination
 
     def get_queryset(self):
         qs = HelpRequest.objects.select_related('requester').prefetch_related('offers__helper')

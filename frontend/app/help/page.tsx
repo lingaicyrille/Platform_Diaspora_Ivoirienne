@@ -1,5 +1,6 @@
 'use client'
 import { useState } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { HandHeart, Plus, AlertTriangle, CheckCircle, Clock, ChevronDown, ChevronUp, Send, X } from 'lucide-react'
@@ -218,7 +219,9 @@ export default function HelpPage() {
                   <div className="p-5">
                     <div className="flex items-start justify-between mb-2">
                       <div className="flex-1 min-w-0 mr-3">
-                        <h3 className="font-bold text-gray-900 text-sm">{req.title}</h3>
+                        <Link href={`/help/${req.id}`} className="font-bold text-gray-900 text-sm hover:text-red-500 transition">
+                          {req.title}
+                        </Link>
                         <p className="text-xs text-gray-400 mt-0.5">
                           {req.requester.first_name} {req.requester.last_name} ·{' '}
                           {new Date(req.created_at).toLocaleDateString('fr-FR')}
