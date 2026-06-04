@@ -2,7 +2,7 @@
 import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Newspaper, Clock, Tag, ChevronRight, Flame, Plus, Image as ImageIcon, X } from 'lucide-react'
+import { Newspaper, Clock, Tag, ChevronRight, Flame, Plus, Image as ImageIcon, X, EyeOff } from 'lucide-react'
 import { AppLayout } from '@/components/layout/app-layout'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
@@ -203,10 +203,13 @@ export default function NewsPage() {
   const [category, setCategory] = useState('')
   const [showCreate, setShowCreate] = useState(false)
 
+  const isStaff = (user as any)?.is_staff
+
   const { data, isLoading } = useQuery<{ results: Article[] }>({
-    queryKey: ['articles', category],
+    queryKey: ['articles', category, isStaff],
     queryFn: () => {
-      const params = new URLSearchParams({ published: 'true' })
+      const params = new URLSearchParams()
+      if (!isStaff) params.set('published', 'true')
       if (category) params.set('category', category)
       return api.get(`/api/news/articles/?${params}`).then(r => r.data)
     },
@@ -228,7 +231,6 @@ export default function NewsPage() {
   const tagOptions = tagsData?.results ?? []
   const featured = articles[0]
   const rest = articles.slice(1)
-  const isStaff = (user as any)?.is_staff
 
   return (
     <AppLayout title="Actualités" user={userMeta} onLogout={() => { clearAuth(); router.push('/auth/login') }}>
@@ -306,6 +308,11 @@ export default function NewsPage() {
                       categoryColors[featured.category] ?? categoryColors.other)}>
                       {categoryLabels[featured.category] ?? featured.category}
                     </span>
+                    {isStaff && !featured.is_published && (
+                      <span className="flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full bg-yellow-50 text-yellow-700">
+                        <EyeOff size={9} /> Brouillon
+                      </span>
+                    )}
                     <span className="flex items-center gap-1 text-xs text-gray-400">
                       <Clock size={11} /> {timeAgo(featured.published_at ?? featured.created_at)}
                     </span>
@@ -351,6 +358,11 @@ export default function NewsPage() {
                         categoryColors[article.category] ?? categoryColors.other)}>
                         {categoryLabels[article.category] ?? article.category}
                       </span>
+                      {isStaff && !article.is_published && (
+                        <span className="flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full bg-yellow-50 text-yellow-700">
+                          <EyeOff size={9} /> Brouillon
+                        </span>
+                      )}
                       <span className="text-[11px] text-gray-400">
                         {timeAgo(article.published_at ?? article.created_at)}
                       </span>

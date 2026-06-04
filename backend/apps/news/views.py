@@ -31,11 +31,14 @@ class ArticleViewSet(viewsets.ModelViewSet):
         qs = Article.objects.select_related('author').prefetch_related('tags')
         category = self.request.query_params.get('category')
         tag = self.request.query_params.get('tag')
-        published_only = self.request.query_params.get('published', 'true')
         published_date = self.request.query_params.get('published_date')
 
-        if published_only.lower() != 'false':
-            qs = qs.filter(is_published=True)
+        # Staff see all articles; regular users only see published ones
+        if not self.request.user.is_staff:
+            published_only = self.request.query_params.get('published', 'true')
+            if published_only.lower() != 'false':
+                qs = qs.filter(is_published=True)
+
         if category:
             qs = qs.filter(category=category)
         if tag:
