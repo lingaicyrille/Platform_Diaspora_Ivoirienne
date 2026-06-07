@@ -12,10 +12,22 @@ import { cn } from '@/lib/utils'
 import api from '@/lib/api'
 import { useAuthStore } from '@/store/auth-store'
 
+function TrustBadge({ score }: { score: number }) {
+  const level = score >= 80 ? { label: 'Expert', color: 'text-amber-600 bg-amber-50' }
+    : score >= 50 ? { label: 'Confirmé', color: 'text-blue-600 bg-blue-50' }
+    : score >= 20 ? { label: 'Actif', color: 'text-green-600 bg-green-50' }
+    : { label: 'Nouveau', color: 'text-gray-500 bg-gray-100' }
+  return (
+    <span className={cn('text-[11px] font-semibold px-2.5 py-1 rounded-full flex items-center gap-1', level.color)}>
+      <Star size={10} /> {level.label} · {score} pts
+    </span>
+  )
+}
+
 interface Business {
   id: number
   name: string
-  owner: { id: number; first_name: string; last_name: string }
+  owner: { id: number; first_name: string; last_name: string; trust_score: number }
   description: string
   category: string
   address: string
@@ -270,9 +282,10 @@ export default function BusinessDetailPage() {
 
           <div className="flex items-center gap-3 pt-1 border-t border-gray-100">
             <User size={15} className="text-ci-green shrink-0" />
-            <p className="text-sm text-gray-700">
+            <p className="text-sm text-gray-700 flex-1">
               Propriétaire : <span className="font-medium">{business.owner.first_name} {business.owner.last_name}</span>
             </p>
+            <TrustBadge score={business.owner.trust_score ?? 0} />
           </div>
         </div>
 

@@ -4,7 +4,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   ArrowLeft, ShoppingBag, MapPin, Tag, User, Send,
-  CheckCircle, XCircle, Clock,
+  CheckCircle, XCircle, Clock, Star,
 } from 'lucide-react'
 import { AppLayout } from '@/components/layout/app-layout'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -12,10 +12,22 @@ import { cn } from '@/lib/utils'
 import api from '@/lib/api'
 import { useAuthStore } from '@/store/auth-store'
 
+function TrustBadge({ score }: { score: number }) {
+  const level = score >= 80 ? { label: 'Expert', color: 'text-amber-600 bg-amber-50' }
+    : score >= 50 ? { label: 'Confirmé', color: 'text-blue-600 bg-blue-50' }
+    : score >= 20 ? { label: 'Actif', color: 'text-green-600 bg-green-50' }
+    : { label: 'Nouveau', color: 'text-gray-500 bg-gray-100' }
+  return (
+    <span className={cn('text-[11px] font-semibold px-2.5 py-1 rounded-full flex items-center gap-1', level.color)}>
+      <Star size={10} /> {level.label} · {score} pts
+    </span>
+  )
+}
+
 interface Listing {
   id: number
   title: string
-  seller: { id: number; first_name: string; last_name: string }
+  seller: { id: number; first_name: string; last_name: string; trust_score: number }
   description: string
   price: string
   currency: string
@@ -190,6 +202,9 @@ export default function ListingDetailPage() {
               <User size={13} className="text-ci-green" />
               {isOwn ? 'Votre annonce' : `${listing.seller.first_name} ${listing.seller.last_name}`}
             </span>
+            {!isOwn && (
+              <TrustBadge score={listing.seller.trust_score ?? 0} />
+            )}
             {listing.location && (
               <span className="flex items-center gap-1.5">
                 <MapPin size={13} className="text-ci-green" />
