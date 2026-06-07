@@ -13,6 +13,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
 import api from '@/lib/api'
 import { useAuthStore, type UserProfile } from '@/store/auth-store'
+import { AdBanner } from '@/components/ads/AdBanner'
 
 interface DashboardStats {
   members: number
@@ -243,6 +244,9 @@ export default function DashboardPage() {
             </div>
           </div>
         )}
+
+        {/* Ad banner */}
+        <AdBanner />
 
         {/* Stats row */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
