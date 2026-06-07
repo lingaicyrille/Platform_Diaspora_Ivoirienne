@@ -8,6 +8,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
 import api from '@/lib/api'
 import { useAuthStore } from '@/store/auth-store'
+import { AdSidebar } from '@/components/ads/AdSidebar'
 
 interface Article {
   id: number
@@ -339,6 +340,9 @@ export default function NewsPage() {
                 </div>
               </div>
             )}
+
+            {/* Sponsored sidebar ad between featured and rest */}
+            <AdSidebar />
 
             {/* Rest of articles */}
             {rest.map(article => (
