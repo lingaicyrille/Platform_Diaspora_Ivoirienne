@@ -25,9 +25,9 @@ def recalculate_trust_score(user_pk: int) -> None:
     if user.phone:
         score += 1
 
-    # Community contributions (imported lazily to avoid circular imports)
+    from django.apps import apps
+
     try:
-        from django.apps import apps
         Post = apps.get_model('community', 'Post')
         post_count = Post.objects.filter(author_id=user_pk).count()
         score += min(post_count, 20)
