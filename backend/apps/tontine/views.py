@@ -1,8 +1,15 @@
 from django.db import transaction
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
+from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+
+
+class StandardPagination(PageNumberPagination):
+    page_size = 20
+    page_size_query_param = 'page_size'
+    max_page_size = 100
 
 from apps.notifications.utils import push_notification
 from apps.notifications.models import NotificationType
@@ -17,6 +24,7 @@ from .serializers import (
 
 class TontineViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
+    pagination_class = StandardPagination
 
     def get_queryset(self):
         return (
@@ -111,6 +119,7 @@ class TontineViewSet(viewsets.ModelViewSet):
 class TontineRoundViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = TontineRoundSerializer
     permission_classes = [IsAuthenticated]
+    pagination_class = StandardPagination
 
     def get_queryset(self):
         qs = TontineRound.objects.select_related('beneficiary', 'tontine').prefetch_related('contributions')

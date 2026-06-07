@@ -5,7 +5,7 @@ import { useQuery } from '@tanstack/react-query'
 import {
   Home, Users, Calendar, Briefcase, ShoppingBag, Newspaper,
   Plane, Building2, MessageCircle, User, Settings, X, LogOut,
-  Coins, HandHeart, GraduationCap, Megaphone,
+  Coins, HandHeart, GraduationCap, Megaphone, Globe,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import api from '@/lib/api'
@@ -23,6 +23,7 @@ const mainNav = [
   { href: '/tontines', icon: Coins, label: 'Tontines' },
   { href: '/solidarity', icon: HandHeart, label: 'Solidarité' },
   { href: '/mentorship', icon: GraduationCap, label: 'Mentorat' },
+  { href: '/map', icon: Globe, label: 'Carte Diaspora' },
   { href: '/ads', icon: Megaphone, label: 'Publicités' },
 ]
 

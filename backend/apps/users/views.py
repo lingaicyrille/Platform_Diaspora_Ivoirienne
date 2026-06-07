@@ -15,6 +15,12 @@ from .serializers import (
     CustomTokenObtainPairSerializer, RegisterSerializer, UserSerializer,
 )
 
+_map_schema = inline_serializer(name='DiasporaMapEntry', fields={
+    'country_of_residence': drf_serializers.CharField(),
+    'continent': drf_serializers.CharField(),
+    'count': drf_serializers.IntegerField(),
+})
+
 TOKEN_EXPIRY_HOURS = 24
 
 
@@ -153,6 +159,23 @@ class ResendVerificationView(APIView):
         token = EmailVerificationToken.objects.create(user=user)
         _send_verification_email(user, token)
         return Response({'detail': 'Email de vérification envoyé.'})
+
+
+@extend_schema(responses=_map_schema(many=True))
+class DiasporaMapView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        from django.db.models import Count
+        data = (
+            User.objects
+            .filter(is_active=True)
+            .exclude(country_of_residence='')
+            .values('country_of_residence', 'continent')
+            .annotate(count=Count('id'))
+            .order_by('-count')
+        )
+        return Response(list(data))
 
 
 @extend_schema(

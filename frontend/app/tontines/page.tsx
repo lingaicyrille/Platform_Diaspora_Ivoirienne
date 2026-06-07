@@ -267,7 +267,10 @@ export default function TontinesPage() {
                       {t.member_count >= t.max_members ? 'Complet' : 'Rejoindre'}
                     </button>
                   )}
-                  <button className="p-2 rounded-xl border border-gray-200 text-gray-400 hover:text-ci-orange hover:border-ci-orange transition">
+                  <button
+                    onClick={() => router.push(`/tontines/${t.id}`)}
+                    className="p-2 rounded-xl border border-gray-200 text-gray-400 hover:text-ci-orange hover:border-ci-orange transition"
+                  >
                     <ChevronRight size={16} />
                   </button>
                 </div>
